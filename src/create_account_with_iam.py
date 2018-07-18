@@ -36,7 +36,7 @@ def create_account(
     account_status = 'IN_PROGRESS'
     while account_status == 'IN_PROGRESS':
         create_account_status_response = org_client.describe_create_account_status(CreateAccountRequestId=create_account_response.get('CreateAccountStatus').get('Id'))
-        print("Create account status "+str(create_account_status_response))
+        #print("Create account status "+str(create_account_status_response))
         account_status = create_account_status_response.get('CreateAccountStatus').get('State')
     if account_status == 'SUCCEEDED':
         account_id = create_account_status_response.get('CreateAccountStatus').get('AccountId')
@@ -76,29 +76,22 @@ def create_admin_user_group_and_policy(
         # create admin user
         path = '/'
         admin_user_name = b'Admin%s' % account_name
-        debug_output("Creating admin user: " + admin_user_name, output_debug_messages)
         admin_user_response = master_iam_client.create_user(
             Path=path,
             UserName=admin_user_name
         )
-        print(admin_user_response)
-        print("=================")
 
         # create admin group
         admin_group_name = b'Organizations%sAdmin' % account_name
-        debug_output("Creating admin group: " + admin_group_name, output_debug_messages)
         admin_group_response = master_iam_client.create_group(
             Path=path,
             GroupName=admin_group_name
         )
-        debug_output(admin_group_response, output_debug_messages)
-        debug_output("=================", output_debug_messages)
 
         # create admin policy
         admin_policy_name = b'Organizations%sAccountAdminAccess' % account_name
         admin_policy_document = b'{"Version":"2012-10-17","Statement":[{"Sid":"AllowAdminAccessToOrganizationAccount","Effect":"Allow","Action":["sts:AssumeRole"],"Resource":["arn:aws:iam::%s:role/OrganizationAccountAdminAccessRole"]}]}' % account_id
         description = b'Admin Access Role for Account ID=%s' % account_id
-        debug_output("Creating admin policy: " + admin_policy_name, output_debug_messages)
 
         admin_access_policy_response = master_iam_client.create_policy(
             PolicyName=admin_policy_name,
@@ -107,8 +100,6 @@ def create_admin_user_group_and_policy(
             Description=description
         )
         admin_access_policy_arn = admin_access_policy_response['Policy']['Arn']
-        debug_output(admin_access_policy_arn, output_debug_messages)
-        debug_output("=================", output_debug_messages)
 
         # attach the policy to the group
         print("Attaching admin policy: " + admin_access_policy_arn + " to admin group " + admin_group_name)
@@ -116,35 +107,24 @@ def create_admin_user_group_and_policy(
             GroupName=admin_group_name,
             PolicyArn=admin_access_policy_arn
         )
-        debug_output(group_attach_policy_response, output_debug_messages)
-        debug_output("=================", output_debug_messages)
 
         # add the admin user to the admin group
-        debug_output("Adding admin user: " + admin_user_name + " to admin group " + admin_group_name, output_debug_messages)
         add_admin_user_to_group_response = master_iam_client.add_user_to_group(
             GroupName=admin_group_name,
             UserName=admin_user_name
         )
-        debug_output(add_admin_user_to_group_response, output_debug_messages)
-        debug_output("=================", output_debug_messages)
 
         # create the access key/secret
-        debug_output("Creating access key/secret for admin user: " + admin_user_name, output_debug_messages)
         admin_access_key_response = master_iam_client.create_access_key(
             UserName=admin_user_name
         )
-        debug_output(admin_access_key_response, output_debug_messages)
-        debug_output("=================", output_debug_messages)
 
         # create login profile
-        debug_output("Creating login profile for admin user: " + admin_user_name, output_debug_messages)
         admin_login_profile_response = master_iam_client.create_login_profile(
             UserName=admin_user_name,
             Password=admin_login_password,
             PasswordResetRequired=True
         )
-        debug_output(admin_login_profile_response, output_debug_messages)
-        debug_output("=================", output_debug_messages)
 
         return admin_access_key_response, admin_user_name, admin_login_profile_response
 
@@ -170,30 +150,24 @@ def create_readonly_user_group_and_policy(
         # create readonly user
         path = '/'
         readonly_user_name = b'ReadOnly%s' % account_name
-        debug_output("Creating read only user: " + readonly_user_name, output_debug_messages) # debug
         readonly_user_response = master_iam_client.create_user(
             Path=path,
             UserName=readonly_user_name
         )
-        debug_output(readonly_user_response, output_debug_messages) # debug
-        debug_output("=================", output_debug_messages) # debug
 
-        readonly_group_name = b'Organizations%sReadOnly' % account_name
-        debug_output("Creating read only group: " + readonly_group_name, output_debug_messages) # debug
         # create readonly group
+        readonly_group_name = b'Organizations%sReadOnly' % account_name
         readonly_group_response = master_iam_client.create_group(
             Path=path,
             GroupName=readonly_group_name
         )
-        debug_output(readonly_group_response, output_debug_messages) # debug
-        debug_output("=================", output_debug_messages) # debug
 
         # ----
 
         readonly_policy_name = b'Organizations%sAccountReadOnlyAccess' % account_name
         readonly_policy_document = b'{"Version":"2012-10-17","Statement":[{"Sid":"AllowReadOnlyAccessToOrganizationAccount","Effect":"Allow","Action":["sts:AssumeRole"],"Resource":["arn:aws:iam::%s:role/OrganizationAccountReadOnlyAccessRole"]}]}' % account_id
         description = b'Read Only Access Role for Account ID=%s' % account_id
-        debug_output("Creating read only policy: " + readonly_policy_name, output_debug_messages) # debug
+
         # create readonly policy
         readonly_access_policy_response = master_iam_client.create_policy(
             PolicyName=readonly_policy_name,
@@ -202,50 +176,36 @@ def create_readonly_user_group_and_policy(
             Description=description
         )
         readonly_access_policy_arn = readonly_access_policy_response['Policy']['Arn']
-        debug_output(readonly_access_policy_arn, output_debug_messages) # debug
-        debug_output("=================", output_debug_messages) # debug
 
         # ----
 
-        debug_output("Attaching read only policy: " + readonly_access_policy_arn + " to read only group: " + readonly_group_name, output_debug_messages) # debug
         # attach the policy to the readonly group
         group_attach_policy_response = master_iam_client.attach_group_policy(
             GroupName=readonly_group_name,
             PolicyArn=readonly_access_policy_arn
         )
-        debug_output(group_attach_policy_response, output_debug_messages) # debug
-        debug_output("=================", output_debug_messages) # debug
 
         # ----
 
-        debug_output("Adding read ony user: " + readonly_user_name + " to read only group " + readonly_group_name, output_debug_messages) # debug
         # add the readonly user to the admin group
         add_readonly_user_to_group_response = master_iam_client.add_user_to_group(
             GroupName=readonly_group_name,
             UserName=readonly_user_name
         )
-        debug_output(add_readonly_user_to_group_response, output_debug_messages) # debug
-        debug_output("=================", output_debug_messages) # debug
 
         # ----
 
-        debug_output("Creating access key/secret for read only user: " + readonly_user_name, output_debug_messages) # debug
         # create readonly access key
         readonly_access_key_response = master_iam_client.create_access_key(UserName=readonly_user_name)
-        debug_output(readonly_access_key_response, output_debug_messages) # debug
-        debug_output("=================", output_debug_messages) # debug
 
         # ----
 
-        debug_output("Creating login profile for read only user: " + readonly_user_name, output_debug_messages) # debug
         # create readonly login profile
         readonly_login_profile_response = master_iam_client.create_login_profile(
             UserName=readonly_user_name,
             Password=readonly_login_password,
             PasswordResetRequired=True
         )
-        debug_output(readonly_login_profile_response, output_debug_messages) # debug
-        debug_output("=================", output_debug_messages) # debug
 
         return readonly_access_key_response, readonly_user_name, readonly_login_profile_response
 
@@ -298,17 +258,12 @@ def create_read_only_role_in_account(
             AssumeRolePolicyDocument=assume_role_policy_document,
             Description=description
         )
-        debug_output("Created read only role response", output_debug_messages)
-        debug_output(create_read_only_role_response, output_debug_messages)
 
         aws_read_only_policy_arn = 'arn:aws:iam::aws:policy/ReadOnlyAccess'
         attach_aws_read_only_policy_response = account_iam_client.attach_role_policy(
             RoleName=readonly_account_role,
             PolicyArn=aws_read_only_policy_arn
         )
-
-        debug_output("Attached aws read only policy arn response", output_debug_messages)
-        debug_output(attach_aws_read_only_policy_response, output_debug_messages)
 
         return create_read_only_role_response
 
@@ -396,9 +351,9 @@ def main():
     if not re.match(r"[^@]+@[^@]+\.[^@]+", account_email):
         print("Account email: %s is not valid" % account_email)
         sys.exit(1)
-    admin_account_role = raw_input("Please enter Account Role (leave empty for: 'OrganizationAccountAdminAccessRole'): ") or "OrganizationAccountAdminAccessRole"
-    admin_login_password = raw_input("Please enter Admin Web Console Password: ") or "password123"
-    readonly_login_password = raw_input("Please enter Read-Only Web Console Password: ") or "password123"
+    admin_account_role = raw_input("Please enter Admin Account Role Name (leave empty for: 'OrganizationAccountAdminAccessRole'): ") or "OrganizationAccountAdminAccessRole"
+    admin_login_password = raw_input("Please enter Admin Web Console Password: ") or "3vdF+40vhjxCK"
+    readonly_login_password = raw_input("Please enter Read-Only Web Console Password: ") or "jC$DK6Te6nICj"
     readonly_account_role = 'OrganizationAccountReadOnlyAccessRole'
 
     # set the account create variables
@@ -423,7 +378,6 @@ def main():
     # create a read only role in the account
     print("Creating read only role in account: " + account_id)
     read_only_role_response = create_read_only_role_in_account(account_iam_client, current_account_id, readonly_account_role, output_debug_messages)
-    print(read_only_role_response)
 
     # create admin user, group and policy and get the access details
     print("Creating admin user, group, policy and getting the access details for account : " + account_id)
@@ -433,12 +387,6 @@ def main():
         account_id,
         admin_login_password,
         output_debug_messages)
-    # debug
-    debug_output("Admin response", output_debug_messages)
-    debug_output(admin_access_key_response, output_debug_messages)
-    debug_output(admin_user_name, output_debug_messages)
-    debug_output(admin_login_profile_response, output_debug_messages)
-    debug_output('================', output_debug_messages)
 
     # create read only user, group and policy and get the access details
     print("Creating read only user, group, policy and getting the access details for account : " + account_id)
@@ -448,16 +396,8 @@ def main():
         account_id,
         readonly_login_password,
         output_debug_messages)
-    # debug
-    debug_output("Readonly response", output_debug_messages)
-    debug_output(readonly_access_key_response, output_debug_messages)
-    debug_output(readonly_user_name, output_debug_messages)
-    debug_output(readonly_login_profile_response, output_debug_messages)
-    debug_output('================', output_debug_messages)
 
-    # publishing results
-    debug_output("Publishing results", output_debug_messages)
-
+    # publish results
     publish(account_name,
         account_id,
         account_email,
